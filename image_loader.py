@@ -3,7 +3,7 @@ import adafruit_imageload
 import time
 from adafruit_display_shapes.rect import Rect
 
-
+from adafruit_hid.keycode import Keycode
 
 # Listas de archivos de imagen
 corner_images = [
@@ -26,62 +26,152 @@ program_images = {
     "AfterEffects": "/img/prog/AfterEffects.png"
 }
 
-import displayio
-from adafruit_display_shapes.rect import Rect
 
-def draw_squares(splash, width, height):
-    """Dibuja un fondo negro y luego cuadrados blancos en el centro de la pantalla."""
-    square_size_top = 25
-    square_size_bottom = 30
-    separation = 2
-    total_width_top = 5 * square_size_top + 4 * separation
-    total_width_bottom = 3 * square_size_bottom + 2 * separation
+# Diccionario que mapea Keycodes a rutas de iconos
+keycode_to_icon = {
+    Keycode.SPACEBAR: "/img/prog/key/space.png",
+    Keycode.O: "/img/prog/key/O.png",
+    Keycode.I: "/img/prog/key/I.png",
+}
 
-    # Calcular la posición inicial para centrar los cuadrados superiores
-    start_x_top = (width - total_width_top) // 2
-    start_y_top = (height - square_size_top) // 2 - 20  # Subir 20 píxeles
 
-    # Calcular la posición inicial para centrar los cuadrados inferiores
-    start_x_bottom = (width - total_width_bottom) // 2
-    start_y_bottom = start_y_top + square_size_top + separation + 5
-      # Debajo de los cuadrados superiores
+def draw_icons(splash, key_actions_for_program, WIDTH, HEIGHT):
+    """Dibuja iconos en dos filas en el centro de la pantalla según el Keycode correspondiente."""
+    icon_group = displayio.Group()
 
-    # Crear un grupo para los cuadrados
-    squares_group = displayio.Group()
+    icon_size = 20
+    spacing = 10
 
-    # Dibujar un fondo negro que cubra el área de los cuadrados blancos
-    background_width = max(total_width_top, total_width_bottom)
-    background_height = (square_size_top + separation) + (square_size_bottom + separation + 5)  # Altura total
-    background_x = (width - background_width) // 2
-    background_y = start_y_top
+    num_icons_top = 5
+    total_width_top = num_icons_top * icon_size + (num_icons_top - 1) * spacing
+    x_start_top = (WIDTH - total_width_top) // 2
+    y_position_top = HEIGHT // 2 - icon_size - spacing
 
-    background_rect = Rect(
-        x=background_x, 
-        y=background_y, 
-        width=background_width, 
-        height=background_height, 
-        fill=0x000000  # Color negro
+    num_icons_bottom = 3
+    total_width_bottom = num_icons_bottom * icon_size + (num_icons_bottom - 1) * spacing
+    x_start_bottom = (WIDTH - total_width_bottom) // 2
+    y_position_bottom = HEIGHT // 2 + spacing
+
+    for index in range(num_icons_top):
+        if index < len(key_actions_for_program):
+            # Ajusta la descompresión para manejar hasta tres elementos
+            action = key_actions_for_program[index]
+            if len(action) == 3:
+                modifier1, modifier2, key = action
+            elif len(action) == 2:
+                modifier1, key = action
+                modifier2 = None
+            else:
+                key = action[0]
+                modifier1 = modifier2 = None
+
+            if key in keycode_to_icon:
+                icon_path = keycode_to_icon[key]
+                print(f"Intentando cargar la imagen para {key} desde {icon_path}")
+                try:
+                    image, palette = adafruit_imageload.load(icon_path, bitmap=displayio.Bitmap, palette=displayio.Palette)
+                    icon_tilegrid = displayio.TileGrid(
+                        image,
+                        pixel_shader=palette,
+                        x=x_start_top + index * (icon_size + spacing),
+                        y=y_position_top
+                    )
+                    icon_group.append(icon_tilegrid)
+                    print(f"Imagen cargada correctamente para {key}")
+                except Exception as e:
+                    print(f"Error al cargar {icon_path}: {e}")
+                    placeholder = Rect(
+                        x=x_start_top + index * (icon_size + spacing),
+                        y=y_position_top,
+                        width=icon_size,
+                        height=icon_size,
+                        fill=0x000000
+                    )
+                    icon_group.append(placeholder)
+
+    for index in range(num_icons_bottom):
+        if num_icons_top + index < len(key_actions_for_program):
+            action = key_actions_for_program[num_icons_top + index]
+            if len(action) == 3:
+                modifier1, modifier2, key = action
+            elif len(action) == 2:
+                modifier1, key = action
+                modifier2 = None
+            else:
+                key = action[0]
+                modifier1 = modifier2 = None
+
+            if key in keycode_to_icon:
+                icon_path = keycode_to_icon[key]
+                print(f"Intentando cargar la imagen para {key} desde {icon_path}")
+                try:
+                    image, palette = adafruit_imageload.load(icon_path, bitmap=displayio.Bitmap, palette=displayio.Palette)
+                    icon_tilegrid = displayio.TileGrid(
+                        image,
+                        pixel_shader=palette,
+                        x=x_start_bottom + index * (icon_size + spacing),
+                        y=y_position_bottom
+                    )
+                    icon_group.append(icon_tilegrid)
+                    print(f"Imagen cargada correctamente para {key}")
+                except Exception as e:
+                    print(f"Error al cargar {icon_path}: {e}")
+                    placeholder = Rect(
+                        x=x_start_bottom + index * (icon_size + spacing),
+                        y=y_position_bottom,
+                        width=icon_size,
+                        height=icon_size,
+                        fill=0x000000
+                    )
+                    icon_group.append(placeholder)
+
+    if len(splash) > 1:
+        splash.pop()
+    splash.append(icon_group)
+
+
+def update_icon_feedback(splash, button_index, WIDTH, HEIGHT, duration=0.2):
+    """Proporciona feedback visual al presionar un botón dibujando un borde alrededor del icono."""
+    icon_size = 25
+    spacing = 10
+
+    # Configuración para la fila superior (4 iconos)
+    num_icons_top = 4
+    total_width_top = num_icons_top * icon_size + (num_icons_top - 1) * spacing
+    x_start_top = (WIDTH - total_width_top) // 2
+    y_position_top = HEIGHT // 2 - icon_size - spacing
+
+    # Configuración para la fila inferior (3 iconos)
+    num_icons_bottom = 3
+    total_width_bottom = num_icons_bottom * icon_size + (num_icons_bottom - 1) * spacing
+    x_start_bottom = (WIDTH - total_width_bottom) // 2
+    y_position_bottom = HEIGHT // 2 + spacing
+
+    # Determinar la posición del icono basado en el índice del botón
+    if button_index < num_icons_top:
+        x = x_start_top + button_index * (icon_size + spacing)
+        y = y_position_top
+    else:
+        x = x_start_bottom + (button_index - num_icons_top) * (icon_size + spacing)
+        y = y_position_bottom
+
+    # Crear un rectángulo con borde blanco alrededor del icono
+    border_rect = Rect(
+        x=x - 2,  # Un poco más grande que el icono
+        y=y - 2,
+        width=icon_size + 4,
+        height=icon_size + 4,
+        outline=0xFFFFFF  # Blanco
     )
-    squares_group.append(background_rect)
 
-    # Dibujar 5 cuadrados superiores
-    for i in range(5):
-        x = start_x_top + i * (square_size_top + separation)
-        square = Rect(x=x, y=start_y_top, width=square_size_top, height=square_size_top, fill=0xa1a0a1)
-        squares_group.append(square)
+    # Añadir el rectángulo al grupo splash
+    splash.append(border_rect)
 
-    # Dibujar 3 cuadrados inferiores
-    for i in range(3):
-        x = start_x_bottom + i * (square_size_bottom + separation)
-        square = Rect(x=x, y=start_y_bottom, width=square_size_bottom, height=square_size_bottom, fill=0xFFFFFF)
-        squares_group.append(square)
+    # Mantener el borde visible por un corto período
+    time.sleep(duration)
 
-    # Añadir el grupo de cuadrados al grupo principal splash
-    splash.append(squares_group)
-
-
-
-
+    # Eliminar el rectángulo después de mostrar el feedback
+    splash.remove(border_rect)
 
 def display_program_icon(splash, program_name, width):
     """Carga y muestra una imagen pequeña del programa en la esquina superior izquierda."""

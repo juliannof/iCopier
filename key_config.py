@@ -56,16 +56,16 @@ key_actions = {
         ("CONTROL", Keycode.I),  # Importar
     ],
     "Premiere": [
-        (NO_MODIFIER, Keycode.SPACEBAR ),  # Importar
-        ("CONTROL", Keycode.E),  # Exportar
-        ("CONTROL", Keycode.M),  # Marcar
-        ("CONTROL", Keycode.K),  # Cortar
+        (NO_MODIFIER, Keycode.I),  # Importar
+        (NO_MODIFIER, Keycode.O),  # Importar
+        (NO_MODIFIER, Keycode.SHIFT, Keycode.I),  # Importar
+        (NO_MODIFIER, Keycode.SHIFT, Keycode.O),  # Importar
         ("CONTROL", Keycode.S),  # Guardar
-        ("CONTROL", Keycode.L),  # Bloquear
-        ("CONTROL", Keycode.R),  # Revelar
-        ("CONTROL", Keycode.T),  # Transformar
-        (NO_MODIFIER, Keycode.SPACEBAR),  # Espacio
-        ("CONTROL", Keycode.B),  # Balance de color
+        (NO_MODIFIER, Keycode.SPACEBAR),  # Importar
+        (NO_MODIFIER, Keycode.SPACEBAR),  # Importar
+        (NO_MODIFIER, Keycode.SPACEBAR),  # Importar
+        (NO_MODIFIER, Keycode.I),  # Espacio
+        (NO_MODIFIER, Keycode.I)  # Espacio
     ],
     "LigthRoom": [
         ("CONTROL", Keycode.R),  # Revelar

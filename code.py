@@ -88,6 +88,8 @@ backlight = PWMOut(tft_bl, frequency=5000, duty_cycle=65535)
 
 # Crear un grupo de display
 splash = displayio.Group()
+
+# Asigna el grupo `splash` al display usando `root_group`
 display.root_group = splash
 
 # Subgrupo para la imagen de esquina
@@ -114,7 +116,58 @@ pixels = neopixel.NeoPixel(pin_neopixels, num_pixels, brightness=0.3)
 # Configuración del teclado
 keyboard = Keyboard(usb_hid.devices)
 
-# Bucle principal
+def update_icon_feedback(splash, key, key_actions, WIDTH, HEIGHT):
+    """Proporciona feedback visual al presionar un botón dibujando un borde alrededor del icono."""
+    # Tamaño y posición de los iconos
+    icon_size = 25
+    spacing = 10
+
+    # Configuración para la fila superior (4 iconos)
+    num_icons_top = 4
+    total_width_top = num_icons_top * icon_size + (num_icons_top - 1) * spacing
+    x_start_top = (WIDTH - total_width_top) // 2
+    y_position_top = HEIGHT // 2 - icon_size - spacing
+
+    # Configuración para la fila inferior (3 iconos)
+    num_icons_bottom = 3
+    total_width_bottom = num_icons_bottom * icon_size + (num_icons_bottom - 1) * spacing
+    x_start_bottom = (WIDTH - total_width_bottom) // 2
+    y_position_bottom = HEIGHT // 2 + spacing
+
+    # Encontrar el índice del key en key_actions
+    index = None
+    for idx, (modifier, k) in enumerate(key_actions):
+        if k == key:
+            index = idx
+            break
+
+    if index is not None:
+        # Determinar la posición del icono
+        if index < num_icons_top:
+            x = x_start_top + index * (icon_size + spacing)
+            y = y_position_top
+        else:
+            x = x_start_bottom + (index - num_icons_top) * (icon_size + spacing)
+            y = y_position_bottom
+
+        # Crear un rectángulo con borde blanco alrededor del icono
+        border_rect = Rect(
+            x=x - 2,  # Un poco más grande que el icono
+            y=y - 2,
+            width=icon_size + 4,
+            height=icon_size + 4,
+            outline=0xFFFFFF  # Blanco
+        )
+
+        # Añadir el rectángulo al grupo splash
+        splash.append(border_rect)
+
+        # Mantener el borde visible por un corto período
+        time.sleep(0.2)
+
+        # Eliminar el rectángulo después de mostrar el feedback
+        splash.remove(border_rect)
+
 def main():
     menu_options = ["PC", "Mac"]
     current_option = 0
@@ -149,17 +202,18 @@ def main():
             program_names,
             current_app
         )
-        print(f"Programa seleccionado: {program_names[current_app]}")
+        program_name = program_names[current_app]
+        print(f"Programa seleccionado: {program_name}")
 
         # Mostrar el icono pequeño del programa seleccionado
         display_program_icon(corner_group, program_names[current_app], WIDTH)
 
         time.sleep(1)
 
-        print(f"Has seleccionado: {program_names[current_app]}")
+        print(f"Has seleccionado: {program_name}")
 
-        # Dibujar cuadrados en el centro de la pantalla
-        draw_squares(splash, WIDTH, HEIGHT)
+        # Dibujar iconos en el centro de la pantalla
+        draw_icons(splash, key_actions[program_name], WIDTH, HEIGHT)
 
         # Determinar la contraseña según la plataforma seleccionada
         if menu_options[current_option] == "PC":
@@ -175,6 +229,9 @@ def main():
                 if not button.value:  # Si el botón está presionado (normalmente alto, bajo cuando se presiona)
                     print(f"Botón {index} presionado")
 
+                    # Proporcionar feedback visual basado en la posición del botón
+                    #update_icon_feedback(splash, index, WIDTH, HEIGHT)
+
                     if index == 5:
                         # Escribir la contraseña
                         for char in password:
@@ -188,37 +245,36 @@ def main():
                         break  # Salir del bucle después de enviar la contraseña
                     else:
                         # Enviar la acción de tecla correspondiente al botón
-                        program_name = program_names[current_app]
                         if program_name in key_actions:
                             actions = key_actions[program_name]
                             if index < len(actions):
-                                modifier, key = actions[index]
-                                if modifier == "CONTROL":
-                                    modifier_key = platform_modifier
-                                elif modifier == "GUI":
-                                    modifier_key = platform_modifier
-                                else:
-                                    modifier_key = None
-
-                                # Enviar teclas
-                                if modifier_key:
-                                    keyboard.press(modifier_key, key)
-                                else:
+                                action = actions[index]
+                                # Procesar la acción de tecla
+                                if len(action) == 3:
+                                    modifier1, modifier2, key = action
+                                    if modifier1:
+                                        keyboard.press(modifier1)
+                                    if modifier2:
+                                        keyboard.press(modifier2)
+                                    keyboard.press(key)
+                                elif len(action) == 2:
+                                    modifier, key = action
+                                    if modifier:
+                                        keyboard.press(modifier)
+                                    keyboard.press(key)
+                                elif len(action) == 1:
+                                    key = action[0]
                                     keyboard.press(key)
 
                                 keyboard.release_all()
 
                                 # Imprimir una descripción más clara
                                 key_name = keycode_to_string(key)
-                                if modifier_key:
-                                    modifier_name = "CONTROL" if modifier_key == Keycode.CONTROL else "GUI"
-                                    print(f"Acción de tecla {modifier_name} + {key_name} enviada para el programa {program_name}.")
-                                else:
-                                    print(f"Acción de tecla {key_name} enviada para el programa {program_name}.")
+                                print(f"Acción de tecla {key_name} enviada para el programa {program_name}.")
 
-                    time.sleep(0.2)  # Pequeña pausa para evitar múltiples lecturas rápidas
+                    time.sleep(0.05)  # Pequeña pausa para evitar múltiples lecturas rápidas
 
-            time.sleep(0.1)  # Esperar un poco antes de verificar de nuevo
+            time.sleep(0.02)  # Esperar un poco antes de verificar de nuevo
 
 # Ejecutar la función principal
 main()
